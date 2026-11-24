@@ -51,6 +51,7 @@
     $("prevEvent").addEventListener("click",()=>selectEvent(state.index-1));
     $("nextEvent").addEventListener("click",()=>selectEvent(state.index+1));
     $("matchSelect").addEventListener("change",e=>setMatch(e.target.value));
+    $("markReviewed").addEventListener("click",()=>{const e=selectedEvent();e.reviewed=!e.reviewed;renderAll();});
     $("downloadManager").addEventListener("click",()=>download("manager"));
     $("downloadInternal").addEventListener("click",()=>download("internal"));
     $("downloadBoth").addEventListener("click",()=>download("both"));
@@ -167,7 +168,7 @@
         if(!last.card&&info.card)last.card=info.card;
         continue;
       }
-      last={key:role.charAt(0)+String(groups.length),pages:[p.index],beo:info.id,card:info.card,opp:info.opp,name:info.name||"Event "+(groups.length+1),date:info.date||"",expectedPages:info.pageTotal||1,text:p.text,flags:{},detected:{},reasons:{},match:""};
+      last={key:role.charAt(0)+String(groups.length),pages:[p.index],beo:info.id,card:info.card,opp:info.opp,name:info.name||"Event "+(groups.length+1),date:info.date||"",expectedPages:info.pageTotal||1,text:p.text,flags:{},detected:{},reasons:{},match:"",reviewed:false};
       groups.push(last);
     }
     return groups;
@@ -288,7 +289,7 @@
     }finally{setBusy(false);}
   }
   function countReview(e) {
-    return KEYS.some(k=>e.detected[k]===null)||!e.match;
+    return !e.match||(!e.reviewed&&KEYS.some(k=>e.detected[k]===null));
   }
   function renderSummary(){
     $("eventTotal").textContent=state.events.length;
@@ -327,6 +328,8 @@
   function renderInspector(){
     const e=selectedEvent();if(!e)return;
     $("reviewBadge").hidden=!countReview(e);
+    $("markReviewed").textContent=e.reviewed?"✓ Reviewed":"Mark as reviewed";
+    $("markReviewed").classList.toggle("reviewed",e.reviewed);
     const checks=$("stampChecks");checks.innerHTML="";
     for(const key of KEYS){
       const stamp=STAMPS[key],checked=!!e.flags[key],detected=e.detected[key];
@@ -462,6 +465,8 @@
     if(state.busy||!state.pdfs.manager||!state.pdfs.internal)return;
     const unmatched=state.events.filter(e=>!e.match).length;
     if(unmatched)notify(unmatched+" event(s) have no Internal match. They will be skipped in the Internal copy.",true);
+    const unreviewed=state.events.filter(e=>!e.reviewed&&KEYS.some(k=>e.detected[k]===null)).length;
+    if(unreviewed&&!window.confirm(unreviewed+" event(s) still have uncertain stamp detection. Continue exporting without reviewing them?"))return;
     setBusy(true,"Stamping PDFs","Embedding the original stamp impressions…",8);
     try{
       if(role==="both"){
