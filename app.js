@@ -402,15 +402,20 @@
     const page=await packet.doc.getPage(pageIndex+1);
     if(token!==state.renderToken)return;
     const viewport=page.getViewport({scale:1.35});
-    canvas.width=Math.round(viewport.width);canvas.height=Math.round(viewport.height);
-    const ctx=canvas.getContext("2d",{alpha:false});
-    ctx.fillStyle="#fff";ctx.fillRect(0,0,canvas.width,canvas.height);
+    // Render offscreen to prevent rapid event navigation from reusing a busy canvas.
+    const buffer=document.createElement("canvas");
+    buffer.width=Math.round(viewport.width);buffer.height=Math.round(viewport.height);
+    const ctx=buffer.getContext("2d",{alpha:false});
+    ctx.fillStyle="#fff";ctx.fillRect(0,0,buffer.width,buffer.height);
     await page.render({canvasContext:ctx,viewport}).promise;
     if(token!==state.renderToken)return;
-    // Preview and exported PDF both use the very same positioned RGBA impressions.
+    // Preview and exported PDF use the same positioned RGBA stamp impressions.
     for(const s of placement(event,page.view[2]-page.view[0],page.view[3]-page.view[1])){
       ctx.drawImage(state.assets[s.key].image,s.x*1.35,s.top*1.35,s.w*1.35,s.h*1.35);
     }
+    if(token!==state.renderToken)return;
+    canvas.width=buffer.width;canvas.height=buffer.height;
+    canvas.getContext("2d").drawImage(buffer,0,0);
   }
   async function renderPreviews(){
     const e=selectedEvent(),token=++state.renderToken;
