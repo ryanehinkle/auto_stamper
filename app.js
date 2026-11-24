@@ -92,7 +92,7 @@
   // Small, measured scan angles (positive = right side of the ink droops).
   // Correct the SOURCE IMPRESSION once. Both canvas previews and pdf-lib
   // receive exactly the same deskewed PNG, rather than rotating on export.
-  const STAMP_SCAN_SKEW = {tax:0.65,balance:-0.35,leaderboard:0,tentative:0,retail:0.85};
+  const STAMP_SCAN_SKEW = {tax:0.65,balance:-0.35,leaderboard:0.25,tentative:0,retail:0.85};
 
   function bytesFromDataURL(dataURL) {
     const binary=atob(dataURL.split(",")[1]);
