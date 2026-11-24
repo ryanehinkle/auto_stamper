@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080809">
+  <title>Auto Stamper</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <input type="file" id="managerInput" accept=".pdf,application/pdf" hidden>
+  <input type="file" id="internalInput" accept=".pdf,application/pdf" hidden>
+  <div id="landing" class="landing">
+    <section class="landing-card">
+      <div class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><path d="M10 5h12l3 8-4 3v4H11v-4l-4-3 3-8Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M7 21h18v5H7zM11 8h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></div>
+      <h1 class="brand-title"><span>Auto</span> Stamper</h1>
+      <p class="landing-subtitle">Automatically stamp your Manager and Internal BEOs, using the Manager copy to determine what each event needs.</p>
+      <div class="upload-stack">
+        <div id="managerDrop" class="upload-zone" role="button" tabindex="0" aria-label="Upload Manager BEO PDF">
+          <div class="upload-icon">01</div>
+          <div class="upload-main"><strong>Manager BEOs</strong><small id="managerFileLabel">Choose or drop a PDF</small></div>
+          <span id="managerFileStatus" class="upload-state">Select PDF</span>
+        </div>
+        <div id="internalDrop" class="upload-zone" role="button" tabindex="0" aria-label="Upload Internal BEO PDF">
+          <div class="upload-icon">02</div>
+          <div class="upload-main"><strong>Internal BEOs</strong><small id="internalFileLabel">Choose or drop a PDF</small></div>
+          <span id="internalFileStatus" class="upload-state">Select PDF</span>
+        </div>
+      </div>
+      <button id="startBtn" class="primary-btn wide" disabled>Upload both PDFs</button>
+      <p class="footnote">Analyzed locally in your browser. Original PDF quality is preserved.</p>
+      <div id="landingError" class="error-box" hidden></div>
+    </section>
+  </div>
+
+  <main id="workspace" class="workspace" hidden>
+    <header class="main-header">
+      <div class="wordmark" id="homeBtn" role="button" tabindex="0" title="Upload a new packet"><h1><span>Auto</span> Stamper</h1><p>Daily BEO stamp review</p></div>
+      <div class="top-actions">
+        <span id="sourceCount" class="header-note">Manager + Internal BEOs</span>
+        <button id="replaceBtn" class="ghost-btn">Upload new</button>
+        <button id="downloadBothTop" class="primary-btn">Export PDFs</button>
+      </div>
+    </header>
+    <div class="file-strips">
+      <div class="file-strip"><div class="file-tag">MANAGER</div><div class="file-title" id="managerStripName">—</div><div class="file-detail" id="managerStripCount"></div></div>
+      <div class="file-strip"><div class="file-tag">INTERNAL</div><div class="file-title" id="internalStripName">—</div><div class="file-detail" id="internalStripCount"></div></div>
+    </div>
+    <div class="progress-summary">
+      <div><strong id="eventTotal">0</strong><small>Events</small></div>
+      <div><strong id="stampTotal">0</strong><small>Stamps</small></div>
+      <div><strong id="matchedTotal">0</strong><small>Matched pairs</small></div>
+      <div><strong id="reviewTotal">0</strong><small>To review</small></div>
+      <span class="summary-caption">Check the suggested stamps before exporting</span>
+    </div>
+
+    <div class="work-grid">
+      <aside class="panel event-list-panel">
+        <div class="panel-header"><div><h2>Events</h2><p id="eventListCount">0 events</p></div><span class="blue-dot"></span></div>
+        <div id="eventList" class="event-list"></div>
+      </aside>
+      <section class="preview-panel">
+        <div class="panel-header preview-heading">
+          <div><h2 id="currentEventTitle">Event preview</h2><p id="currentEventMeta">Manager and Internal copies</p></div>
+          <div class="preview-nav"><button id="prevEvent" title="Previous event" aria-label="Previous event">‹</button><span id="eventPager">1 / 1</span><button id="nextEvent" title="Next event" aria-label="Next event">›</button></div>
+        </div>
+        <div class="preview-columns">
+          <div class="preview-column">
+            <div class="preview-caption"><span>Manager BEO</span><small id="managerPageLabel">Page 1</small></div>
+            <div class="preview-sheet"><canvas id="managerCanvas" aria-label="Stamped Manager BEO preview"></canvas></div>
+          </div>
+          <div class="preview-column">
+            <div class="preview-caption"><span>Internal BEO</span><small id="internalPageLabel">Page 1</small></div>
+            <div class="preview-sheet" id="internalSheet"><canvas id="internalCanvas" aria-label="Stamped Internal BEO preview"></canvas><div id="noInternal" class="no-match" hidden>Internal event not matched</div></div>
+          </div>
+        </div>
+        <div class="preview-footer"><span class="status-dot"></span> Stamp placement is identical across matching copies. Only the event's first page receives stamps.</div>
+      </section>
+      <aside class="panel inspection-panel">
+        <div class="panel-header"><div><h2>Stamps</h2><p>Manager BEO detection</p></div><span id="reviewBadge" class="review-badge" hidden>Review</span></div>
+        <div class="inspection-body">
+          <p class="section-label">Detected stamps</p>
+          <div id="stampChecks" class="stamp-checks"></div>
+          <p class="section-note">Changes here apply to both copies of this event.</p>
+          <div class="section-divider"></div>
+          <label class="section-label" for="matchSelect">Matching Internal BEO</label>
+          <select id="matchSelect" class="match-select"></select>
+          <div id="matchMessage" class="match-message"></div>
+          <div class="section-divider"></div>
+          <p class="section-label">Detection details</p>
+          <div id="detectionDetails" class="detection-details"></div>
+          <div class="section-divider"></div>
+          <div class="layout-hint"><strong>Placement</strong><p>Stamps are lined up in the blank area above the event information. Retail moves below the staff table when the top area is full.</p></div>
+        </div>
+      </aside>
+    </div>
+    <div class="export-row"><div><strong>Ready to print</strong><p>Export both packets with their original text, images and page order intact.</p></div><div class="export-buttons"><button id="downloadManager" class="ghost-btn">Manager PDF</button><button id="downloadInternal" class="ghost-btn">Internal PDF</button><button id="downloadBoth" class="primary-btn">Download both (.zip)</button></div></div>
+  </main>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <div id="loading" class="loading-overlay" hidden><div class="loading-card"><div class="spinner"></div><strong id="loadingTitle">Reading BEOs</strong><p id="loadingSub">Preparing stamp preview…</p><div class="loading-track"><div id="loadingBar"></div></div></div></div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="app.js" defer></script>
+</body>
+</html>
