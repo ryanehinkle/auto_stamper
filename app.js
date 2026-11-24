@@ -89,21 +89,72 @@
     $("startBtn").disabled=true;$("startBtn").textContent="Upload both PDFs";
     $("workspace").hidden=true;$("landing").hidden=false;window.scrollTo(0,0);
   }
+  // Small, measured scan angles (positive = right side of the ink droops).
+  // Correct the SOURCE IMPRESSION once. Both canvas previews and pdf-lib
+  // receive exactly the same deskewed PNG, rather than rotating on export.
+  const STAMP_SCAN_SKEW = {tax:0.65,balance:-0.35,leaderboard:0,tentative:0,retail:0.85};
+
+  function bytesFromDataURL(dataURL) {
+    const binary=atob(dataURL.split(",")[1]);
+    const bytes=new Uint8Array(binary.length);
+    for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
+    return bytes;
+  }
+
+  function makeLevelStamp(original,key) {
+    const skew=STAMP_SCAN_SKEW[key]||0;
+    if(Math.abs(skew)<0.01)return original.src;
+    const zoom=4,theta=-skew*Math.PI/180;
+    const w=original.naturalWidth,h=original.naturalHeight;
+    const wide=document.createElement("canvas");
+    wide.width=Math.ceil(zoom*(Math.abs(w*Math.cos(theta))+Math.abs(h*Math.sin(theta))))+8;
+    wide.height=Math.ceil(zoom*(Math.abs(h*Math.cos(theta))+Math.abs(w*Math.sin(theta))))+8;
+    const ctx=wide.getContext("2d",{willReadFrequently:true});
+    ctx.imageSmoothingEnabled=false;
+    ctx.translate(wide.width/2,wide.height/2);
+    ctx.rotate(theta);
+    ctx.drawImage(original,-w*zoom/2,-h*zoom/2,w*zoom,h*zoom);
+    const alpha=ctx.getImageData(0,0,wide.width,wide.height).data;
+    let left=wide.width,right=-1,top=wide.height,bottom=-1;
+    for(let y=0;y<wide.height;y++){
+      for(let x=0;x<wide.width;x++){
+        if(alpha[(y*wide.width+x)*4+3]<=8)continue;
+        left=Math.min(left,x);right=Math.max(right,x);
+        top=Math.min(top,y);bottom=Math.max(bottom,y);
+      }
+    }
+    if(right<left||bottom<top)throw new Error("Could not straighten the "+STAMPS[key].name+" stamp.");
+    // Retain the original print width and the naturally corrected height.
+    const result=document.createElement("canvas");
+    result.width=w;
+    result.height=Math.max(1,Math.round((bottom-top+1)/(right-left+1)*w));
+    const dest=result.getContext("2d");
+    dest.imageSmoothingEnabled=true;
+    dest.imageSmoothingQuality="high";
+    dest.drawImage(wide,left,top,right-left+1,bottom-top+1,0,0,result.width,result.height);
+    return result.toDataURL("image/png");
+  }
+
   async function loadAssets() {
     for(const key of KEYS) {
       if(state.assets[key])continue;
       const response=await fetch("stamps/"+key+".b64",{cache:"force-cache"});
       if(!response.ok)throw new Error("Missing original "+STAMPS[key].name+" stamp asset.");
-      const base64=(await response.text()).trim();
-      const binary=atob(base64);
-      const png=new Uint8Array(binary.length);
-      for(let i=0;i<binary.length;i++)png[i]=binary.charCodeAt(i);
+      const originalBase64=(await response.text()).trim();
       const image=new Image();
       await new Promise((resolve,reject)=>{
         image.onload=resolve;image.onerror=()=>reject(new Error("Could not read the "+key+" stamp."));
-        image.src="data:image/png;base64,"+base64;
+        image.src="data:image/png;base64,"+originalBase64;
       });
-      state.assets[key]={png,image};
+      const correctedURL=makeLevelStamp(image,key);
+      const corrected=new Image();
+      await new Promise((resolve,reject)=>{
+        corrected.onload=resolve;corrected.onerror=()=>reject(new Error("Could not load the straightened "+key+" stamp."));
+        corrected.src=correctedURL;
+      });
+      // Use the exact same deskewed image for both preview and embedded PDF.
+      state.assets[key]={png:bytesFromDataURL(correctedURL),image:corrected};
+      STAMPS[key].height=STAMPS[key].width*corrected.naturalHeight/corrected.naturalWidth;
     }
   }
   function linesFromContent(content,height) {
@@ -386,7 +437,9 @@
     const retailOnTop=!!retail&&rowTotal(tryAll)<=72*factor;
     if(retailOnTop)rows=tryAll;
     const out=[],total=rowTotal(rows);
-    let y=39*factor+Math.max(0,(70*factor-total)*.22);
+    // Keep all rows above the event information box, even for 4 top stamps.
+    const naturalTop=39*factor+Math.max(0,(70*factor-total)*.22);
+    let y=Math.max(24*factor,Math.min(naturalTop,100*factor-total));
     for(const row of rows){
       const maxH=rowHeight(row),gap=9*factor;
       const totalW=row.reduce((sum,s)=>sum+s.w,0)+(row.length-1)*gap;
