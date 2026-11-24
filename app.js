@@ -397,7 +397,7 @@
     if(retail&&!retailOnTop){
       // The white band between the staffing table and first product section.
       // Centered and level, as demonstrated in the scanned references.
-      out.push({key:"retail",x:center-retail.w/2,top:288*factor,w:retail.w,h:retail.h});
+      out.push({key:"retail",x:center-retail.w/2,top:294*factor,w:retail.w,h:retail.h});
     }
     return out;
   }
