@@ -29,7 +29,7 @@ If payment or tax information is missing or ambiguous, detection is left **unver
 
 ## Stamp impressions
 
-The five transparent, colored RGBA impressions in the stamps/ folder were extracted from the supplied blank stamp sheet. The original lettering, sizes, print colors, and natural ink texture are retained. Placement is mathematically centered and level, without reproducing uneven or crooked hand-stamping.
+The five transparent, colored RGBA impressions in the stamps/ folder were extracted from the supplied blank stamp sheet. On load, Auto Stamper deskews the measured scan tilt (0.65° Tax Exempt, -0.35° Balance Due, 0.85° Retail); the already-level Leaderboard and Tentative impressions are kept intact. The generated straightened PNGs are used identically in previews and both PDF exports. The original lettering, print colors, and natural ink texture are retained, while placement is mathematically centered, level, and kept above the event information box.
 
 The **Retail** stamp uses the lower white band just above the first product section when the main header area is too full.
 
